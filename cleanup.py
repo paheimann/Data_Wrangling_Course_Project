@@ -49,12 +49,25 @@ def shape_element(element):
                     if addr_key_1 == "postcode":
                         addr_key_1 = "zipcode"
                     if len(addr_keys) == 2:
+                         ## added after doing database queries
+                        # process bad zipcode values
+                        if addr_key_1 == "zipcode":
+                            if len(child_value.split("-")) > 1: # includes zip+4, select zip only
+                                child_value = child_value.split("-")[0]
+                            elif child_value.find("NJ ") == 0: # value begins with "NJ ", remove
+                                child_value = child_value.split(" ")[1]
+                        # process bad city values
+                        if addr_key_1 == "city":
+                            if len(child_value.split(",")) > 1: # city includes state+zip, select city only
+                                child_value = child_value.split(",")[0]
+                         ## end of added code
                         address.update([(addr_key_1, child_value)])
                 # process "amenity", "shop", "gnis:Class" keys
                 elif child_key in ["amenity","shop","gnis:Class"]:
                     node.update([("place_type",child_value)])
                 # process 3 other "gnis:" keys
                 elif child_key.find("gnis:") == 0: # key begins with "gnis:"
+                    created.update([("user","GNIS")]) # show creator as GNIS, added after doing database queries
                     gnis_keys = child_key.split(":")
                     if gnis_keys[1] in ["County","county_name"]:
                         address.update([("county",child_value)])
@@ -65,10 +78,17 @@ def shape_element(element):
                     node.update([("street",child_value)])
                 # process 2 "tiger" keys
                 elif child_key.find("tiger:") == 0: # key begins with "tiger:"
+                    created.update([("user","TIGER")]) # show creator as TIGER, added after doing database queries
                     tiger_keys = child_key.split(":")
                     if tiger_keys[1] == "county":
                         address.update([("county",child_value)])
                     elif tiger_keys[1] == "zip_left":
+                         ## added after doing database queries
+                        if len(child_value.split(":")) > 1: # includes two zipcodes, select the first one
+                            child_value = child_value.split(":")[0]
+                        elif len(child_value.split(";")) > 1: # includes two zipcodes, semicolon delimited, select the first one
+                            child_value = child_value.split(";")[0]
+                         ## end of added code
                         address.update([("zipcode",child_value)])
                 # process "county_name" key
                 elif child_key == 'created_by':
@@ -76,6 +96,14 @@ def shape_element(element):
                 # process "source" key
                 elif child_key == 'source':
                     created.update([("user",child_value)])
+                 ## added after doing database queries
+                elif child_value == 'multipolygon':
+                    node.update([('type','relation')])
+                elif child_value == 'gas':
+                    node.update([('type','way')])
+                elif child_value == 'Public':
+                    node.update([('type','way')])
+                 ## end of added code
                 # process all other keys that pass through directly
                 else:
                     node.update([(child_key, child_value)])
